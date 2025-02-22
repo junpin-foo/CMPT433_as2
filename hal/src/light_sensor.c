@@ -7,6 +7,7 @@
 
 #include "hal/light_sensor.h"
 #include "hal/i2c.h"
+#include "hal/periodTimer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,12 +20,12 @@
 #define REG_CONFIGURATION 0x01
 #define REG_DATA 0x00
 #define TLA2024_CHANNEL_CONF_2 0x83E2 // Configuration for light sensor
-#define MAX_HISTORY_SIZE 1000 // Maximum samples stored per second
+#define MAX_HISTORY_SIZE 1200 // Maximum samples stored per second
 #define SMOOTHING_FACTOR 0.001 // 0.1% new sample, 99.9% previous average
 #define VOLTAGE_CONVERSION_FACTOR (3.3 / 4096)
 #define DIP_THRESHOLD 0.1  // 0.1V drop to trigger a dip
 #define HYSTERESIS 0.03  // 0.07V rise needed before another dip
-
+#define MAX_DISPLAY_SAMPLES 10 //print 10 samples every second
 
 static double currentSamples[MAX_HISTORY_SIZE];
 static double historySamples[MAX_HISTORY_SIZE];
@@ -55,6 +56,7 @@ long long Sampler_getNumSamplesTaken(void);
 int Sampler_getDipCount(void);
 static void* samplerThreadFunc(void* arg);
 static void Sampler_detectDips(void);
+static void PrintStatistics(void);
 
 
 static void* samplerThreadFunc(void* arg) {
@@ -64,6 +66,7 @@ static void* samplerThreadFunc(void* arg) {
     struct timespec currentTime;
     
     Sampler_getReading();
+    Period_markEvent(PERIOD_EVENT_SAMPLE_LIGHT);
 
     // Sleep for 1ms
     struct timespec reqDelay = {0, 1000000}; 
@@ -73,16 +76,58 @@ static void* samplerThreadFunc(void* arg) {
     clock_gettime(CLOCK_MONOTONIC, &currentTime);
 
     // Check if 1 second has passed
-    if (currentTime.tv_sec > lastMoveTime.tv_sec) {
-        Sampler_moveCurrentDataToHistory();
-        lastMoveTime = currentTime;  // Update last move time
+    time_t diffSec = currentTime.tv_sec - lastMoveTime.tv_sec;
+    long diffNano = currentTime.tv_nsec - lastMoveTime.tv_nsec;
+    
+    if (diffSec > 1 || (diffSec == 1 && diffNano >= 0)) {
+        PrintStatistics();
         Sampler_detectDips();
+        Sampler_moveCurrentDataToHistory();
+        lastMoveTime = currentTime; // Update last move time
     }
 }
     return NULL;
 }
 
+static void PrintStatistics(void) {
+    int historySize;
+    double *history = Sampler_getHistory(&historySize);
+    if (!history) return; // If no samples were collected
+
+    double avgVoltage = Sampler_getAverageReading() * VOLTAGE_CONVERSION_FACTOR;
+    int dipCount = Sampler_getDipCount();
+
+    // Example timing jitter values (replace with actual data)
+    Period_statistics_t stats;
+    Period_getStatisticsAndClear(PERIOD_EVENT_SAMPLE_LIGHT, &stats);
+
+    printf("#Smpl/s = %-4d   Flash @%3dHz   avg = %.3fV   dips = %-3d   Smpl ms[%4.3f, %4.3f] avg %4.3f/%d\n",
+           currentSampleCount,  // Sample rate /sec
+           32,  // Example LED flash rate (replace with actual)
+           avgVoltage,
+           dipCount,
+           stats.minPeriodInMs,
+           stats.maxPeriodInMs,
+           stats.avgPeriodInMs,
+           currentSampleCount);
+
+    // Print evenly spaced sample values
+    if (historySize > 0) {
+        int step = historySize / MAX_DISPLAY_SAMPLES;
+        if (step == 0) step = 1; // Ensure at least one step
+
+        for (int i = 0; i < MAX_DISPLAY_SAMPLES && i * step < historySize; i++) {
+            printf("%d:%.3f ", i * step, history[i * step] * VOLTAGE_CONVERSION_FACTOR);
+        }
+        printf("\n");
+    }
+
+    free(history);
+}
+
+
 void Sampler_init(void) {
+    Period_init();
     I2c_initialize();
     i2c_file_desc = init_i2c_bus(I2CDRV_LINUX_BUS, I2C_DEVICE_ADDRESS);
     currentSampleCount = 0;
@@ -97,6 +142,7 @@ void Sampler_cleanup(void) {
     keepSampling = false;
     pthread_join(samplerThread, NULL);
     I2c_cleanUp();
+    Period_cleanup();
     isInitialized = false;
 }
 

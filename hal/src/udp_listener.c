@@ -106,15 +106,21 @@ void* udp_listener_thread(void* arg) {
                 }
                 
                 if (offset > 0) {
+                    // Replace last comma with newline
+                    if (offset > 2 && response[offset - 2] == ',') {
+                        response[offset - 2] = '\n';
+                        offset--;  // Adjust length
+                    }
                     sendto(sockfd, response, offset, 0, (struct sockaddr*)&client_addr, addr_len);
                 }
+
                 
                 free(history);
             } else {
                 sendto(sockfd, "No history available\n", 21, 0, (struct sockaddr*)&client_addr, addr_len);
             }
         } else if (strcmp(buffer, "stop") == 0) {
-            sendto(sockfd, "Stopping server...\n", 19, 0, (struct sockaddr*)&client_addr, addr_len);
+            sendto(sockfd, "Program terminating.\n", 21, 0, (struct sockaddr*)&client_addr, addr_len);
             close(sockfd);
             exit(0);
 

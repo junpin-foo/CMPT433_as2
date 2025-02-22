@@ -2,6 +2,7 @@
     "C_Cpp.codeAnalysis.clangTidy.enabled": true,
     "files.associations": {
         "light_sensor.h": "c",
-        "udp_listener.h": "c"
+        "udp_listener.h": "c",
+        "periodtimer.h": "c"
     }
 }
