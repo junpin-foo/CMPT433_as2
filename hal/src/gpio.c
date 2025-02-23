@@ -84,6 +84,7 @@ void Gpio_close(struct GpioLine* line)
 // Returns the number of events
 int Gpio_waitForLineChange(
     struct GpioLine* line1, 
+    struct GpioLine* line2, 
     struct gpiod_line_bulk *bulkEvents
 ) {
     assert(s_isInitialized);
@@ -93,6 +94,7 @@ int Gpio_waitForLineChange(
     gpiod_line_bulk_init(&bulkWait);
     
     // TODO: Add more lines if needed
+    gpiod_line_bulk_add(&bulkWait, (struct gpiod_line*)line2);
     gpiod_line_bulk_add(&bulkWait, (struct gpiod_line*)line1);
     
     gpiod_line_request_bulk_both_edges_events(&bulkWait, "Event Waiting");

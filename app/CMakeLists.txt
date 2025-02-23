@@ -5,9 +5,12 @@ file(GLOB MY_SOURCES "src/*.c")
 add_executable(light_sampler ${MY_SOURCES})
 
 # Make use of the libraries
+target_link_libraries(light_sampler LINK_PRIVATE gpiod)
 target_link_libraries(light_sampler LINK_PRIVATE hal)
 target_link_libraries(light_sampler LINK_PRIVATE lcd)
 target_link_libraries(light_sampler LINK_PRIVATE lgpio)
+
+find_library(GPIOD_LIBRARY gpiod)       # UNSURE IF NEEDED
 
 # Copy executable to final location (change `light_sampler` to project name as needed)
 add_custom_command(TARGET light_sampler POST_BUILD 
@@ -15,3 +18,6 @@ add_custom_command(TARGET light_sampler POST_BUILD
      "$<TARGET_FILE:light_sampler>"
      "~/cmpt433/public/light_sampler" 
   COMMENT "Copying ARM executable to public NFS directory")
+
+find_library(GPIOD_LIBRARY gpiod)       
+target_link_libraries(light_sampler LINK_PRIVATE gpiod)

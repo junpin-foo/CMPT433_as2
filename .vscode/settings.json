@@ -3,6 +3,9 @@
     "files.associations": {
         "light_sensor.h": "c",
         "udp_listener.h": "c",
-        "periodtimer.h": "c"
+        "periodtimer.h": "c",
+        "stdatomic.h": "c",
+        "gpio.h": "c",
+        "rotary_encoder_statemachine.h": "c"
     }
 }

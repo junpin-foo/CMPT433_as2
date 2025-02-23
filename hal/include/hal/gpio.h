@@ -27,6 +27,7 @@ struct GpioLine* Gpio_openForEvents(enum eGpioChips chip, int pinNumber);
 
 int Gpio_waitForLineChange(
     struct GpioLine* line1, 
+    struct GpioLine* line2, 
     struct gpiod_line_bulk *bulkEvents
 );
 

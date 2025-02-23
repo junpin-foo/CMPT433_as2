@@ -48,12 +48,15 @@
 #include <time.h>
 #include "hal/light_sensor.h"
 #include "hal/udp_listener.h"
+#include "hal/rotary_encoder_statemachine.h"
+#include "hal/pwm_rotary.h"
 
 int main() {
 
     printf("Initializing sampler...\n");
-    UdpListener_init();
-    Sampler_init();
+    // UdpListener_init();
+    // Sampler_init();
+    PwmRotary_init();
     printf("sampler initialized successfully.\n");
 
     // int count = 100;
@@ -82,7 +85,7 @@ int main() {
         nanosleep(&reqDelay, (struct timespec *) NULL);
     }
 
-    UdpListener_cleanup(); // Cleanup if needed (won't be reached in this case)
+    // UdpListener_cleanup(); // Cleanup if needed (won't be reached in this case)
     return 0;
 
 }
