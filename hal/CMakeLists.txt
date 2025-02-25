@@ -7,4 +7,7 @@ file(GLOB MY_SOURCES "src/*.c")
 
 add_library(hal STATIC ${MY_SOURCES})
 
+
 target_include_directories(hal PUBLIC include)
+include_directories(${CMAKE_SOURCE_DIR}/app/include)
+

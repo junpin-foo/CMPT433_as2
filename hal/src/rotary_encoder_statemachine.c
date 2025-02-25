@@ -102,6 +102,7 @@ void RotaryEncoderStateMachine_init()
 void RotaryEncoderStateMachine_cleanup()
 {
     assert(isInitialized);
+    pthread_join(stateMachineThread, NULL);
     Gpio_cleanup();
     Gpio_close(s_lineA);
     Gpio_close(s_lineB);

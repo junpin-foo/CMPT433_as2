@@ -31,8 +31,6 @@ static void set_pwm_frequency(int hz) {
     
     if (hz == frequency) return; // Avoid unnecessary updates
     frequency = hz;
-
-    pthread_mutex_lock(&pwm_mutex);
     
     int period_ns = hz == 0 ? 0 : NANOSECONDS_IN_1SECOND / hz;
     int duty_cycle_ns = period_ns / 2;
@@ -50,7 +48,6 @@ static void set_pwm_frequency(int hz) {
     fp = fopen(PWM_PATH "enable", "w");
     fprintf(fp, "1"); fclose(fp);
     
-    pthread_mutex_unlock(&pwm_mutex);
     printf("Set frequency to %d Hz\n", hz);
 }
 
@@ -60,15 +57,14 @@ static void *encoder_thread(void *arg) {
         int counter_value = RotaryEncoderStateMachine_getValue();
         if (counter_value != 0) {
             int new_frequency = frequency + counter_value;
-
+            pthread_mutex_lock(&pwm_mutex);
             set_pwm_frequency(new_frequency);
             
             // Reset the counter to avoid accumulation
             RotaryEncoderStateMachine_setValue(0);
+            pthread_mutex_unlock(&pwm_mutex);
+
         }
-
-
-        sleep(1);
     }
     return NULL;
 }
@@ -80,6 +76,7 @@ void PwmRotary_init(void){
 }
 void PwmRotary_cleanup(void){
     assert(isInitialized);
+    pthread_join(pwmThread, NULL);
     RotaryEncoderStateMachine_cleanup();
     isInitialized = false;
 }

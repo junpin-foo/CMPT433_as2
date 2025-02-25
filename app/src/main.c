@@ -50,6 +50,7 @@
 #include "hal/udp_listener.h"
 #include "hal/rotary_encoder_statemachine.h"
 #include "hal/pwm_rotary.h"
+#include "hal/lcd.h"
 
 int main() {
 
@@ -57,6 +58,7 @@ int main() {
     // UdpListener_init();
     // Sampler_init();
     PwmRotary_init();
+    Lcd_init();
     printf("sampler initialized successfully.\n");
 
     // int count = 100;

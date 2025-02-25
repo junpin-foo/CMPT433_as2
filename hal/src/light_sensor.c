@@ -139,8 +139,8 @@ void Sampler_init(void) {
 }
 
 void Sampler_cleanup(void) {
-    keepSampling = false;
     pthread_join(samplerThread, NULL);
+    keepSampling = false;
     I2c_cleanUp();
     Period_cleanup();
     isInitialized = false;
