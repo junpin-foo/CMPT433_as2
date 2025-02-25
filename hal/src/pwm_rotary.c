@@ -71,12 +71,18 @@ static void *encoder_thread(void *arg) {
 
 void PwmRotary_init(void){
     RotaryEncoderStateMachine_init();
+    set_pwm_frequency(BASE_FREQUENCY);
     pthread_create(&pwmThread, NULL, &encoder_thread, NULL);
     isInitialized = true;
 }
+
 void PwmRotary_cleanup(void){
     assert(isInitialized);
     pthread_join(pwmThread, NULL);
     RotaryEncoderStateMachine_cleanup();
     isInitialized = false;
+}
+
+int PwmRotary_getFrequency(void){
+    return frequency;
 }

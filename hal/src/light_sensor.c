@@ -14,6 +14,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include "hal/pwm_rotary.h"
 
 #define I2CDRV_LINUX_BUS "/dev/i2c-1"
 #define I2C_DEVICE_ADDRESS 0x48 // ADC chip
@@ -37,6 +38,7 @@ static bool isFirstSample = true;
 static int dipCount = 0;
 static double lastVoltage = 0.0;
 static bool belowThreshold = false;
+static double maxPeriod = 0.0;
 
 static int i2c_file_desc = -1;
 static bool isInitialized = false;
@@ -62,30 +64,30 @@ static void PrintStatistics(void);
 static void* samplerThreadFunc(void* arg) {
     (void)arg; // Suppress unused parameter warning
     while (keepSampling) {
-    static struct timespec lastMoveTime = {0, 0};  
-    struct timespec currentTime;
-    
-    Sampler_getReading();
-    Period_markEvent(PERIOD_EVENT_SAMPLE_LIGHT);
+        static struct timespec lastMoveTime = {0, 0};  
+        struct timespec currentTime;
+        
+        Sampler_getReading();
+        Period_markEvent(PERIOD_EVENT_SAMPLE_LIGHT);
 
-    // Sleep for 1ms
-    struct timespec reqDelay = {0, 1000000}; 
-    nanosleep(&reqDelay, NULL);
+        // Sleep for 1ms
+        struct timespec reqDelay = {0, 1000000}; 
+        nanosleep(&reqDelay, NULL);
 
-    // Get current time
-    clock_gettime(CLOCK_MONOTONIC, &currentTime);
+        // Get current time
+        clock_gettime(CLOCK_MONOTONIC, &currentTime);
 
-    // Check if 1 second has passed
-    time_t diffSec = currentTime.tv_sec - lastMoveTime.tv_sec;
-    long diffNano = currentTime.tv_nsec - lastMoveTime.tv_nsec;
-    
-    if (diffSec > 1 || (diffSec == 1 && diffNano >= 0)) {
-        PrintStatistics();
-        Sampler_detectDips();
-        Sampler_moveCurrentDataToHistory();
-        lastMoveTime = currentTime; // Update last move time
+        // Check if 1 second has passed
+        time_t diffSec = currentTime.tv_sec - lastMoveTime.tv_sec;
+        long diffNano = currentTime.tv_nsec - lastMoveTime.tv_nsec;
+        
+        if (diffSec > 1 || (diffSec == 1 && diffNano >= 0)) {
+            PrintStatistics();
+            Sampler_detectDips();
+            Sampler_moveCurrentDataToHistory();
+            lastMoveTime = currentTime; // Update last move time
+        }
     }
-}
     return NULL;
 }
 
@@ -101,9 +103,11 @@ static void PrintStatistics(void) {
     Period_statistics_t stats;
     Period_getStatisticsAndClear(PERIOD_EVENT_SAMPLE_LIGHT, &stats);
 
+    maxPeriod = stats.maxPeriodInMs;
+
     printf("#Smpl/s = %-4d   Flash @%3dHz   avg = %.3fV   dips = %-3d   Smpl ms[%4.3f, %4.3f] avg %4.3f/%d\n",
            currentSampleCount,  // Sample rate /sec
-           32,  // Example LED flash rate (replace with actual)
+           PwmRotary_getFrequency(),
            avgVoltage,
            dipCount,
            stats.minPeriodInMs,
@@ -264,7 +268,7 @@ static void Sampler_detectDips(void) {
     }
     pthread_mutex_unlock(&sampleMutex);
 
-    printf("Dips detected: %d\n", dipCount);
+    // printf("Dips detected: %d\n", dipCount);
 }
 
 int Sampler_getDipCount(void) {
@@ -274,4 +278,8 @@ int Sampler_getDipCount(void) {
     }
 
     return dipCount;
+}
+
+double Sampler_getMaxTime(void){
+    return maxPeriod;
 }

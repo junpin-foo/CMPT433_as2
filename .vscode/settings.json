@@ -6,6 +6,8 @@
         "periodtimer.h": "c",
         "stdatomic.h": "c",
         "gpio.h": "c",
-        "rotary_encoder_statemachine.h": "c"
+        "rotary_encoder_statemachine.h": "c",
+        "unistd.h": "c",
+        "string.h": "c"
     }
 }

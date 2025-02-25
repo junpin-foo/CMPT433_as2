@@ -64,15 +64,13 @@ void DrawStuff_updateScreen(char* hz, char* dips, char* ms)
 
     // Draw each line of information separately
     Paint_DrawString_EN(x, y, "JP Foo's!", &Font20, WHITE, BLACK);
-    y += 20; // Move to the next line
+    y += 40; // Move to the next line
     Paint_DrawString_EN(x, y, "Flashes @ ", &Font20, WHITE, BLACK);
     Paint_DrawString_EN(x + 140, y, hz, &Font20, WHITE, BLACK);
-    int hz_width = strlen(hz) * 15; // Approximate width of `hz` in pixels
-    Paint_DrawString_EN(x + 140 + hz_width + 5, y, "Hz", &Font20, WHITE, BLACK);
-    y += 20;
+    y += 40;
     Paint_DrawString_EN(x, y, "Dips =  ", &Font20, WHITE, BLACK);
     Paint_DrawString_EN(x + 120, y, dips, &Font20, WHITE, BLACK);
-    y += 20;
+    y += 40;
     Paint_DrawString_EN(x, y, "Max ms: ", &Font20, WHITE, BLACK);
     Paint_DrawString_EN(x + 160, y, ms, &Font20, WHITE, BLACK);
 

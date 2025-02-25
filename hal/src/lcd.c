@@ -4,10 +4,10 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <pthread.h>
-#include <draw_stuff.h>
 #include <unistd.h>
-
-
+#include <draw_stuff.h>
+#include <hal/pwm_rotary.h>
+#include <hal/light_sensor.h>
 
 static bool isInitialized = false;
 static pthread_t lcdThread;
@@ -15,11 +15,11 @@ static pthread_t lcdThread;
 static void *lcd_thread(void* arg) {
     (void)arg;
     while(1){
-        char hz[16], dips[16], ms[16];
+        char hz[100], dips[100], ms[100];
 
-        snprintf(hz, sizeof(hz), "%d", 0);   //update values
-        snprintf(dips, sizeof(dips), "%d", 500);  
-        snprintf(ms, sizeof(ms), "%d", 1500); 
+        snprintf(hz, sizeof(hz), "%dHz", PwmRotary_getFrequency()); 
+        snprintf(dips, sizeof(dips), "%d", Sampler_getDipCount());  
+        snprintf(ms, sizeof(ms), "%.2f", Sampler_getMaxTime());
 
         DrawStuff_updateScreen(hz, dips, ms);
 

@@ -12,5 +12,6 @@
 
 void PwmRotary_init(void);
 void PwmRotary_cleanup(void);
+int PwmRotary_getFrequency(void);
 
 #endif

@@ -56,7 +56,7 @@ int main() {
 
     printf("Initializing sampler...\n");
     // UdpListener_init();
-    // Sampler_init();
+    Sampler_init();
     PwmRotary_init();
     Lcd_init();
     printf("sampler initialized successfully.\n");
