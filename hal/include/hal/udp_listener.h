@@ -19,4 +19,8 @@ void UdpListener_init(void);
 // clean up thread
 void UdpListener_cleanup(void);
 
+//return stop running flag
+bool UdpListener_isRunning(void);
+
+
 #endif

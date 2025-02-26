@@ -1,3 +1,6 @@
+/* periodTimer.c
+* Periodic timer for collecting statistics. Provided by class.
+*/
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>

@@ -1,3 +1,7 @@
+/* lcd.c
+* LCD module starts thread that updates the screen with the current frequency, dip count and max time every second.
+*/
+
 #include <stdio.h>		//printf()
 #include <stdlib.h>		//exit()
 #include <signal.h>     //signal()
@@ -5,23 +9,28 @@
 #include <assert.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <draw_stuff.h>
+#include <updateLcd.h>
 #include <hal/pwm_rotary.h>
 #include <hal/light_sensor.h>
+#include "hal/udp_listener.h"
+
+
+#define BUFFER_SIZE 100
 
 static bool isInitialized = false;
 static pthread_t lcdThread;
+// static volatile bool lcdRunning = true;
 
 static void *lcd_thread(void* arg) {
     (void)arg;
-    while(1){
-        char hz[100], dips[100], ms[100];
+    while(UdpListener_isRunning()){
+        char hz[BUFFER_SIZE], dips[BUFFER_SIZE], ms[BUFFER_SIZE];
 
         snprintf(hz, sizeof(hz), "%dHz", PwmRotary_getFrequency()); 
         snprintf(dips, sizeof(dips), "%d", Sampler_getDipCount());  
         snprintf(ms, sizeof(ms), "%.2f", Sampler_getMaxTime());
 
-        DrawStuff_updateScreen(hz, dips, ms);
+        UpdateLcd_updateScreen(hz, dips, ms);
 
         sleep(1);
 
@@ -33,20 +42,17 @@ static void *lcd_thread(void* arg) {
 void Lcd_init()
 {
     assert(!isInitialized);
-
-    // Exception handling:ctrl + c
-    // signal(SIGINT, Handler_1IN54_LCD);
     
     // Module Init
-	DrawStuff_init();
+	UpdateLcd_init();
     pthread_create(&lcdThread, NULL, &lcd_thread, NULL);
     isInitialized = true;
 }
 void Lcd_cleanup()
 {
     assert(isInitialized);
+    // lcdRunning = false;
     pthread_join(lcdThread, NULL);
-
-    DrawStuff_cleanup();
+    UpdateLcd_cleanup();
     isInitialized = false;
 }

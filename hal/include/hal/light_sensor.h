@@ -57,6 +57,7 @@ long long Sampler_getNumSamplesTaken(void);
 // Return dip count for previous second samples.
 int Sampler_getDipCount(void);
 
+//Return maxTime from periodTimer
 double Sampler_getMaxTime(void);
 
 

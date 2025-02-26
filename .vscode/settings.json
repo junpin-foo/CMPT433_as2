@@ -8,6 +8,9 @@
         "gpio.h": "c",
         "rotary_encoder_statemachine.h": "c",
         "unistd.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "stdio.h": "c",
+        "stdlib.h": "c",
+        "functional": "c"
     }
 }

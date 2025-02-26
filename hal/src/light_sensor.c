@@ -2,7 +2,7 @@
  * 
  * This file provides functions to initialize and clean up LED control, 
  * set LED triggers, brightness, and delays by interacting with the 
- * sysfs files for the LEDs.
+ * sysfs files for the LEDs. 
  */
 
 #include "hal/light_sensor.h"
@@ -13,9 +13,12 @@
 #include <string.h>
 #include <time.h>
 #include <stdbool.h>
+#include <assert.h>
 #include <pthread.h>
 #include "hal/pwm_rotary.h"
+#include "hal/udp_listener.h"
 
+#define NS_SLEEP 1000000
 #define I2CDRV_LINUX_BUS "/dev/i2c-1"
 #define I2C_DEVICE_ADDRESS 0x48 // ADC chip
 #define REG_CONFIGURATION 0x01
@@ -43,7 +46,7 @@ static double maxPeriod = 0.0;
 static int i2c_file_desc = -1;
 static bool isInitialized = false;
 static pthread_t samplerThread;
-static bool keepSampling = true;
+// static bool keepSampling = true;
 static pthread_mutex_t sampleMutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Function Prototypes
@@ -63,7 +66,7 @@ static void PrintStatistics(void);
 
 static void* samplerThreadFunc(void* arg) {
     (void)arg; // Suppress unused parameter warning
-    while (keepSampling) {
+    while (UdpListener_isRunning()) {
         static struct timespec lastMoveTime = {0, 0};  
         struct timespec currentTime;
         
@@ -71,7 +74,7 @@ static void* samplerThreadFunc(void* arg) {
         Period_markEvent(PERIOD_EVENT_SAMPLE_LIGHT);
 
         // Sleep for 1ms
-        struct timespec reqDelay = {0, 1000000}; 
+        struct timespec reqDelay = {0, NS_SLEEP}; 
         nanosleep(&reqDelay, NULL);
 
         // Get current time
@@ -131,28 +134,33 @@ static void PrintStatistics(void) {
 
 
 void Sampler_init(void) {
+    assert(!isInitialized);
     Period_init();
     I2c_initialize();
+    PwmRotary_init();
     i2c_file_desc = init_i2c_bus(I2CDRV_LINUX_BUS, I2C_DEVICE_ADDRESS);
-    currentSampleCount = 0;
+    currentSampleCount = 0; //Initliaze all values to 0;
     historySampleCount = 0;
     totalSamplesTaken = 0;
-    keepSampling = true;
-    pthread_create(&samplerThread, NULL, &samplerThreadFunc, NULL);
+    // keepSampling = true;
     isInitialized = true;
+    pthread_create(&samplerThread, NULL, &samplerThreadFunc, NULL);
+
 }
 
 void Sampler_cleanup(void) {
+    assert(isInitialized);
+    // keepSampling = false;
     pthread_join(samplerThread, NULL);
-    keepSampling = false;
     I2c_cleanUp();
     Period_cleanup();
+    PwmRotary_cleanup();
     isInitialized = false;
 }
 
 double Sampler_getReading() {
     if (!isInitialized) {
-        fprintf(stderr, "Error: LightSensor not initialized!\n");
+        fprintf(stderr, "Error: LightSensor not initialized! 8\n");
         exit(EXIT_FAILURE);
     }
 
@@ -183,7 +191,7 @@ double Sampler_getReading() {
 
 void Sampler_moveCurrentDataToHistory(void) {
     if (!isInitialized) {
-        fprintf(stderr, "Error: LightSensor not initialized!\n");
+        fprintf(stderr, "Error: LightSensor not initialized! 7\n");
         exit(EXIT_FAILURE);
     }
     pthread_mutex_lock(&sampleMutex);
@@ -195,7 +203,7 @@ void Sampler_moveCurrentDataToHistory(void) {
 
 int Sampler_getHistorySize(void) {
     if (!isInitialized) {
-        fprintf(stderr, "Error: LightSensor not initialized!\n");
+        fprintf(stderr, "Error: LightSensor not initialized! 6\n");
         exit(EXIT_FAILURE);
     }
 
@@ -204,7 +212,7 @@ int Sampler_getHistorySize(void) {
 
 double* Sampler_getHistory(int *size) {
     if (!isInitialized) {
-        fprintf(stderr, "Error: LightSensor not initialized!\n");
+        fprintf(stderr, "Error: LightSensor not initialized! 5\n");
         exit(EXIT_FAILURE);
     }
 
@@ -228,7 +236,7 @@ double* Sampler_getHistory(int *size) {
 
 double Sampler_getAverageReading(void) {
      if (!isInitialized) {
-        fprintf(stderr, "Error: LightSensor not initialized!\n");
+        fprintf(stderr, "Error: LightSensor not initialized! 4\n");
         exit(EXIT_FAILURE);
     }
 
@@ -237,7 +245,7 @@ double Sampler_getAverageReading(void) {
 
 long long Sampler_getNumSamplesTaken(void) {
     if (!isInitialized) {
-        fprintf(stderr, "Error: LightSensor not initialized!\n");
+        fprintf(stderr, "Error: LightSensor not initialized! 3\n");
         exit(EXIT_FAILURE);
     }
 
@@ -246,7 +254,7 @@ long long Sampler_getNumSamplesTaken(void) {
 
 static void Sampler_detectDips(void) {
     if (!isInitialized) {
-        fprintf(stderr, "Error: LightSensor not initialized!\n");
+        fprintf(stderr, "Error: LightSensor not initialized! 2\n");
         exit(EXIT_FAILURE);
     }
 
@@ -273,7 +281,7 @@ static void Sampler_detectDips(void) {
 
 int Sampler_getDipCount(void) {
     if (!isInitialized) {
-        fprintf(stderr, "Error: LightSensor not initialized!\n");
+        fprintf(stderr, "Error: LightSensor not initialized! 1\n");
         exit(EXIT_FAILURE);
     }
 
@@ -281,5 +289,6 @@ int Sampler_getDipCount(void) {
 }
 
 double Sampler_getMaxTime(void){
+    assert(isInitialized);
     return maxPeriod;
 }

@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <assert.h>
 #include "hal/rotary_encoder_statemachine.h"
+#include "hal/udp_listener.h"
 
 #define PWM_PATH "/dev/hat/pwm/GPIO12/"
 #define NANOSECONDS_IN_1SECOND 1000000000
@@ -24,6 +25,8 @@ atomic_int frequency = BASE_FREQUENCY;
 static bool isInitialized = false;
 static pthread_mutex_t pwm_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t pwmThread;
+// static volatile bool running = true;
+
 
 static void set_pwm_frequency(int hz) {
     if (hz < MIN_FREQUENCY) hz = MIN_FREQUENCY; //Supporting only from 0 to 500 Hz
@@ -33,7 +36,7 @@ static void set_pwm_frequency(int hz) {
     frequency = hz;
     
     int period_ns = hz == 0 ? 0 : NANOSECONDS_IN_1SECOND / hz;
-    int duty_cycle_ns = period_ns / 2;
+    int duty_cycle_ns = period_ns / 2; //Split the period in half, first hald on and second half off.
     
     FILE *fp;
     fp = fopen(PWM_PATH "duty_cycle", "w");
@@ -46,14 +49,14 @@ static void set_pwm_frequency(int hz) {
     fprintf(fp, "%d", duty_cycle_ns); fclose(fp);
     
     fp = fopen(PWM_PATH "enable", "w");
-    fprintf(fp, "1"); fclose(fp);
+    fprintf(fp, "1"); fclose(fp); //turn on emitter
     
-    printf("Set frequency to %d Hz\n", hz);
+    // printf("Set frequency to %d Hz\n", hz);
 }
 
 static void *encoder_thread(void *arg) {
     (void)arg; // Suppress unused parameter warning
-    while (1) {
+    while (UdpListener_isRunning()) {
         int counter_value = RotaryEncoderStateMachine_getValue();
         if (counter_value != 0) {
             int new_frequency = frequency + counter_value;
@@ -70,6 +73,7 @@ static void *encoder_thread(void *arg) {
 }
 
 void PwmRotary_init(void){
+    assert(!isInitialized);
     RotaryEncoderStateMachine_init();
     set_pwm_frequency(BASE_FREQUENCY);
     pthread_create(&pwmThread, NULL, &encoder_thread, NULL);
@@ -78,11 +82,13 @@ void PwmRotary_init(void){
 
 void PwmRotary_cleanup(void){
     assert(isInitialized);
+    // running = false;
     pthread_join(pwmThread, NULL);
     RotaryEncoderStateMachine_cleanup();
     isInitialized = false;
 }
 
 int PwmRotary_getFrequency(void){
+    assert(isInitialized);
     return frequency;
 }

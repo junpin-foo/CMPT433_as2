@@ -1,4 +1,7 @@
-#include "draw_stuff.h"
+/* updateLcd.c
+* Provided file to update LCD screen, updated DrawStuff_updateScreen to diplay name, frequency, dips, and max ms.
+*/
+#include "updateLcd.h"
 
 #include "DEV_Config.h"
 #include "LCD_1in54.h"
@@ -10,11 +13,19 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#define DELAY_MS 2000
+#define BACKLIGHT 1023
+#define INITIAL_X 5
+#define INITIAL_Y 40
+#define NEXTLINE_Y 40
+#define FREQUENCY_X 140
+#define DIPS_X 120
+#define MAX_MS_X 160
 
 static UWORD *s_fb;
 static bool isInitialized = false;
 
-void DrawStuff_init()
+void UpdateLcd_init()
 {
     assert(!isInitialized);
 
@@ -28,10 +39,10 @@ void DrawStuff_init()
     }
 	
     // LCD Init
-    DEV_Delay_ms(2000);
+    DEV_Delay_ms(DELAY_MS);
 	LCD_1IN54_Init(HORIZONTAL);
 	LCD_1IN54_Clear(WHITE);
-	LCD_SetBacklight(1023);
+	LCD_SetBacklight(BACKLIGHT);
 
     UDOUBLE Imagesize = LCD_1IN54_HEIGHT*LCD_1IN54_WIDTH*2;
     if((s_fb = (UWORD *)malloc(Imagesize)) == NULL) {
@@ -40,7 +51,7 @@ void DrawStuff_init()
     }
     isInitialized = true;
 }
-void DrawStuff_cleanup()
+void UpdateLcd_cleanup()
 {
     assert(isInitialized);
 
@@ -51,28 +62,27 @@ void DrawStuff_cleanup()
     isInitialized = false;
 }
 
-void DrawStuff_updateScreen(char* hz, char* dips, char* ms)
+void UpdateLcd_updateScreen(char* hz, char* dips, char* ms)
 {
     assert(isInitialized);
 
-    const int x = 5;
-    int y = 40; // Start at a higher position for multiple lines
+    const int x = INITIAL_X;
+    int y = INITIAL_Y; // Start at a higher position for multiple lines
 
     // Initialize the RAM frame buffer to be blank (white)
     Paint_NewImage(s_fb, LCD_1IN54_WIDTH, LCD_1IN54_HEIGHT, 0, WHITE, 16);
     Paint_Clear(WHITE);
 
-    // Draw each line of information separately
     Paint_DrawString_EN(x, y, "JP Foo's!", &Font20, WHITE, BLACK);
-    y += 40; // Move to the next line
+    y += NEXTLINE_Y; // Move to the next line
     Paint_DrawString_EN(x, y, "Flashes @ ", &Font20, WHITE, BLACK);
-    Paint_DrawString_EN(x + 140, y, hz, &Font20, WHITE, BLACK);
-    y += 40;
+    Paint_DrawString_EN(x + FREQUENCY_X, y, hz, &Font20, WHITE, BLACK);
+    y += NEXTLINE_Y;
     Paint_DrawString_EN(x, y, "Dips =  ", &Font20, WHITE, BLACK);
-    Paint_DrawString_EN(x + 120, y, dips, &Font20, WHITE, BLACK);
-    y += 40;
+    Paint_DrawString_EN(x + DIPS_X, y, dips, &Font20, WHITE, BLACK);
+    y += NEXTLINE_Y;
     Paint_DrawString_EN(x, y, "Max ms: ", &Font20, WHITE, BLACK);
-    Paint_DrawString_EN(x + 160, y, ms, &Font20, WHITE, BLACK);
+    Paint_DrawString_EN(x + MAX_MS_X, y, ms, &Font20, WHITE, BLACK);
 
     // Send the RAM frame buffer to the LCD (actually display it)
     LCD_1IN54_Display(s_fb);

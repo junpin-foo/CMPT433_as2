@@ -1,3 +1,7 @@
+/* gpio.c
+* Provided file to look for changes in GPIO pins.
+*/
+
 #include "hal/gpio.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -99,11 +103,14 @@ int Gpio_waitForLineChange(
     
     gpiod_line_request_bulk_both_edges_events(&bulkWait, "Event Waiting");
 
-
-    int result = gpiod_line_event_wait_bulk(&bulkWait, NULL, bulkEvents);
+    struct timespec timeout = { 1, 0 }; // 1 second timeout
+    int result = gpiod_line_event_wait_bulk(&bulkWait, &timeout, bulkEvents);
     if ( result == -1) {
         perror("Error waiting on lines for event waiting");
-        exit(EXIT_FAILURE);
+        return -1;
+    }
+    if (result == 0) {
+        return 0;
     }
 
     int numEvents = gpiod_line_bulk_num_lines(bulkEvents);

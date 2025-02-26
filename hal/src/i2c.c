@@ -16,6 +16,8 @@
 #include <stdbool.h>
 #include <time.h>
 
+#define SLEEP 55000
+
 static bool isInitialized = false;
 
 void I2c_initialize(void) {
@@ -65,7 +67,7 @@ void write_i2c_reg16(int i2c_file_desc, uint8_t reg_addr, uint16_t value) {
         perror("Unable to write i2c register");
         exit(EXIT_FAILURE);
     }
-    struct timespec reqDelay = {0, 75000};
+    struct timespec reqDelay = {0, SLEEP};
     nanosleep(&reqDelay, (struct timespec *) NULL);
 }
 
@@ -88,7 +90,7 @@ uint16_t read_i2c_reg16(int i2c_file_desc, uint8_t reg_addr) {
         exit(EXIT_FAILURE);
     }
 
-    struct timespec reqDelay = {0, 75000};
+    struct timespec reqDelay = {0, SLEEP};
     nanosleep(&reqDelay, (struct timespec *) NULL);
     return value;
 }

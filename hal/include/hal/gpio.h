@@ -1,3 +1,7 @@
+/* gpio.h
+* Provided file to look for changes in GPIO pins.
+*/
+
 // Low-level GPIO access using gpiod
 #ifndef _GPIO_H_
 #define _GPIO_H_

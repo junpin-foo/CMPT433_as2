@@ -1,9 +1,9 @@
 /* rotary_encoder_statemachine.c 
-
-
+* Rotary encoder state machine implementation as discussed in class. Uses state machine to keep track of the rotary encoder value.
 */
 #include "hal/rotary_encoder_statemachine.h"
 #include "hal/gpio.h"
+#include "hal/udp_listener.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -11,16 +11,20 @@
 #include <stdatomic.h>
 #include <pthread.h>
 
-#define GPIO_CHIP          GPIO_CHIP_2
-#define GPIO_LINE_A   7
-#define GPIO_LINE_B   8
+#define GPIO_CHIP GPIO_CHIP_2
+#define GPIO_LINE_A 7
+#define GPIO_LINE_B 8
 
 
 static bool isInitialized = false;
 struct GpioLine* s_lineA = NULL;
 struct GpioLine* s_lineB = NULL;
 static atomic_int counter = 0;
+static bool ccwFlag = false;
+static bool cwFlag = false;
 static pthread_t stateMachineThread;
+// static volatile bool stateMachineRunning = true;
+
 
 // Function Prototypes 
 void RotaryEncoderStateMachine_init();
@@ -50,18 +54,46 @@ struct state {
     START STATEMACHINE
 */
 static void on_clockwise(void) {
-    counter++;
+    if(cwFlag) {
+        counter++;
+        cwFlag = false;
+    }
 }
 static void on_counterclockwise(void) {
-    counter--;
+    if(ccwFlag) {
+        counter--;
+        ccwFlag = false;
+    }
 }
+
+static void track_clockwise(void) {
+    if (cwFlag == false) {
+        cwFlag = true;
+    }
+}
+
+static void track_counterclockwise(void) {
+    if (ccwFlag == false) {
+        ccwFlag = true;
+    }
+}
+
+static void reset_flag(void) {
+    if (cwFlag == true) {
+        cwFlag = false;
+    }
+    if (ccwFlag == true) {
+        ccwFlag = false;
+    }
+}
+
 
 struct state states[] = {
     { // State 0
-        .aRise = {&states[0], NULL},
-        .aFall = {&states[1], NULL},
-        .bRise = {&states[0], NULL},
-        .bFall = {&states[3], NULL},
+        .aRise = {&states[0], reset_flag},
+        .aFall = {&states[1], track_clockwise},
+        .bRise = {&states[0], reset_flag},
+        .bFall = {&states[3], track_counterclockwise},
     },
     { // State 1
         .aRise = {&states[0], on_counterclockwise},
@@ -102,15 +134,17 @@ void RotaryEncoderStateMachine_init()
 void RotaryEncoderStateMachine_cleanup()
 {
     assert(isInitialized);
+    // stateMachineRunning = false;
     pthread_join(stateMachineThread, NULL);
-    Gpio_cleanup();
     Gpio_close(s_lineA);
     Gpio_close(s_lineB);
+    Gpio_cleanup();
     isInitialized = false;
 }
 
 int RotaryEncoderStateMachine_getValue()
 {
+    assert(isInitialized);
     return counter;
 }
 
@@ -121,13 +155,15 @@ void RotaryEncoderStateMachine_setValue(int value)
 
 static void* RotaryEncoderStateMachine_doState(void* arg)
 {
-    assert(isInitialized);
     (void)arg; // Suppress unused parameter warning
 
-    printf("\n\nWaiting for an event...\n");
-    while (true) {
+    // printf("\n\nWaiting for an event...\n");
+    while (UdpListener_isRunning()) {
         struct gpiod_line_bulk bulkEvents;
         int numEvents = Gpio_waitForLineChange(s_lineA, s_lineB, &bulkEvents);
+        if (numEvents == -1) {
+            break;  // Exit the loop on failure
+        }
 
         // Iterate over the event
         for (int i = 0; i < numEvents; i++)
@@ -185,5 +221,5 @@ static void* RotaryEncoderStateMachine_doState(void* arg)
             #endif
         }
     }
-
+    return NULL;
 }

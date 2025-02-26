@@ -6,6 +6,7 @@
   // More information at: https://go.microsoft.com/fwlink/linkid=830387
   "version": "0.2.0",
   "configurations": [
+    
   {
   "name": "GDB debug - custom",
   "type": "cppdbg",

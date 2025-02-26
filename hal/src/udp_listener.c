@@ -17,22 +17,40 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 #include "hal/light_sensor.h"
+#include "hal/rotary_encoder_statemachine.h"
+#include "hal/pwm_rotary.h"
+#include "hal/lcd.h"
+#include <stdatomic.h> 
+#include <assert.h>
+
 
 #define PORT 12345
 #define BUFFER_SIZE 1024
+#define HELP_BUFFER_SIZE 512
+#define SHORT_BUFFER_SIZE 64
+#define MAX_UDP_BUFFER_SIZE 1500
 
 static pthread_t udp_thread;
 static int sockfd;
 static struct sockaddr_in server_addr, client_addr;
 static socklen_t addr_len = sizeof(client_addr);
 static char *last_command = NULL;
+static bool isInitialized = false;
+
+static volatile atomic_bool running = true;
+
+//Prototype
+static void* udp_listener_thread(void* arg);
+void UdpListener_init(void);
+void UdpListener_cleanup(void);
+bool UdpListener_isRunning(void);
 
 void* udp_listener_thread(void* arg) {
     (void)arg; // Suppress unused parameter warning
     char buffer[BUFFER_SIZE];
     ssize_t received_len;
 
-    while (1) {
+    while (running) {
         received_len = recvfrom(sockfd, buffer, BUFFER_SIZE - 1, 0, (struct sockaddr*)&client_addr, &addr_len);
         if (received_len < 0) {
             perror("Receive failed");
@@ -55,74 +73,79 @@ void* udp_listener_thread(void* arg) {
             last_command = strdup(buffer);  // Store last valid command
         }
 
-        printf("Received command: %s\n", buffer);
+        // printf("Received command: %s\n", buffer);
 
         if (strcmp(buffer, "help") == 0 || strcmp(buffer, "?") == 0) {
-            sendto(sockfd, 
-            "\nAvailable commands: \nhelp: list of commands and summary,\ncount: Return the total number of light samples take so far,\nlength: Return how many samples were captured during the previous second,\ndips: Return how many dips were detected during the previous second’s samples,\nhistory: Return all the data samples from the previous second,\nstop: Exit the program,\n<enter>: repeat last command\n",
-                390,
-                0, (const struct sockaddr *)&client_addr, addr_len);
+            char response[HELP_BUFFER_SIZE];
+            snprintf(response, sizeof(response), 
+                    "\nAccepted command examples:\n"
+                    "count -- get the total number of samples taken.\n"
+                    "length -- get the number of samples taken in the previously completed second.\n"
+                    "dips -- get the number of dips in the previously completed second.\n"
+                    "history -- get all the samples in the previously completed second.\n"
+                    "stop -- cause the server program to end.\n"
+                    "<enter> -- repeat last command.\n");
+
+            sendto(sockfd, response, strlen(response), 0, (const struct sockaddr *)&client_addr, addr_len);
                 
         } else if (strcmp(buffer, "count") == 0) {
-            char response[64];
+            char response[SHORT_BUFFER_SIZE];
             snprintf(response, sizeof(response), "# samples taken total: %lld\n", Sampler_getNumSamplesTaken());
             sendto(sockfd, response, strlen(response), 0, (struct sockaddr*)&client_addr, addr_len);
 
         } else if (strcmp(buffer, "length") == 0) {
-            char response[64];
+            char response[SHORT_BUFFER_SIZE];
             snprintf(response, sizeof(response), "# samples taken last second: %d\n", Sampler_getHistorySize());
             sendto(sockfd, response, strlen(response), 0, (struct sockaddr*)&client_addr, addr_len);
 
         } else if (strcmp(buffer, "dips") == 0) {
-            char response[64];
+            char response[SHORT_BUFFER_SIZE];
             snprintf(response, sizeof(response), "# Dips: %d\n", Sampler_getDipCount());
             sendto(sockfd, response, strlen(response), 0, (struct sockaddr*)&client_addr, addr_len);
 
         } else if (strcmp(buffer, "history") == 0) {
             int size = 0;
             double* history = Sampler_getHistory(&size);
-            
+
             if (history) {
-                char response[1500];  // Maximum packet size
+                char response[MAX_UDP_BUFFER_SIZE];  
                 int offset = 0;
-                
+                int line_count = 0;  // Track numbers per packet
+
                 for (int i = 0; i < size; i++) {
-                    double voltage = (3.3 / 4096) * history[i];  // Convert ADC value to voltage (3.3V reference, 12-bit ADC)
+                    double voltage = (3.3 / 4096) * history[i];  //conver ADC value to volage, 12 bit ADC with 3.3V reference
                     int written = snprintf(response + offset, sizeof(response) - offset, "%.3f, ", voltage);
-                    
-                    if (written < 0 || (size_t)(offset + written) >= sizeof(response) - 10) {  //By stopping 10 bytes before the end, we ensure that at least one full formatted value fits in the current packet.
-                        // Ensure we have room and no single value is split
-                        sendto(sockfd, response, offset, 0, (struct sockaddr*)&client_addr, addr_len);
-                        offset = 0;
-                        written = snprintf(response, sizeof(response), "%.3f, ", voltage);
+
+                    if (written < 0 || (size_t)(offset + written) >= sizeof(response) - 1) {
+                        // Handle buffer overflow (shouldn't happen in the new logic)
+                        break;
                     }
-                    
+
                     offset += written;
-                    
-                    // After every 10 numbers, add a newline
-                    if ((i + 1) % 10 == 0) {
-                        response[offset - 1] = '\n';
+                    line_count++;
+
+                    // Send only when exactly 10 values are collected
+                    if (line_count == 10) {
+                        response[offset - 2] = '\n';  // Replace last comma with newline
+                        sendto(sockfd, response, offset - 1, 0, (struct sockaddr*)&client_addr, addr_len);
+                        offset = 0;  // Reset buffer
+                        line_count = 0; // Reset counter
                     }
-                }
-                
-                if (offset > 0) {
-                    // Replace last comma with newline
-                    if (offset > 2 && response[offset - 2] == ',') {
-                        response[offset - 2] = '\n';
-                        offset--;  // Adjust length
-                    }
-                    sendto(sockfd, response, offset, 0, (struct sockaddr*)&client_addr, addr_len);
                 }
 
-                
+                // If leftover values exist (less than 10), 
+                if (line_count > 0) {
+                    response[offset - 2] = '\n';  
+                    sendto(sockfd, response, offset - 1, 0, (struct sockaddr*)&client_addr, addr_len);
+                }
+
                 free(history);
-            } else {
-                sendto(sockfd, "No history available\n", 21, 0, (struct sockaddr*)&client_addr, addr_len);
             }
+
         } else if (strcmp(buffer, "stop") == 0) {
-            sendto(sockfd, "Program terminating.\n", 21, 0, (struct sockaddr*)&client_addr, addr_len);
-            close(sockfd);
-            exit(0);
+            sendto(sockfd, "Program terminating.\n", 21, 0, (struct sockaddr*)&client_addr, addr_len); //21 = length of "Program terminating.\n"
+            running = false;  // Signal main thread to exit
+            break;
 
         } else {
             sendto(sockfd, "Unknown command. Type 'help' for a list of commands.\n", 53, 0, (struct sockaddr*)&client_addr, addr_len);
@@ -132,6 +155,8 @@ void* udp_listener_thread(void* arg) {
 }
 
 void UdpListener_init(void) {
+    assert(!isInitialized);
+    isInitialized = true;
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         perror("Socket creation failed");
@@ -153,8 +178,15 @@ void UdpListener_init(void) {
 }
 
 void UdpListener_cleanup(void) {
-    free(last_command);
-    pthread_cancel(udp_thread);
+    assert(isInitialized);
     pthread_join(udp_thread, NULL);
+    free(last_command);
     close(sockfd);
 }
+
+bool UdpListener_isRunning(void) {
+    assert(isInitialized);
+
+    return running;
+}
+
