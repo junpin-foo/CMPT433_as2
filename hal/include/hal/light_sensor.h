@@ -1,21 +1,19 @@
 /* light_sensor.h
  * 
- * This file declares a structure for defining LEDs and functions for initializing, 
- * cleaning up, and controlling LED attributes like trigger, brightness, 
- * and delays using sysfs files. The `LED_FILE_NAME` macro defines the 
- * path to the sysfs LED directory.
+ * This module is responsible for sampling light levels in the background using a thread.  
+ * It continuously collects light intensity readings and stores them internally.  
+ *  
+ * Features:  
+ * - Continuously samples light levels and maintains a history.  
+ * - Provides access to light data from the previous complete second.  
+ * - Supports data synchronization for actions like computing dips and logging.  
+ * - Allows retrieval of historical data and statistical insights. 
  * 
- * // Module to sample light levels in the background (uses a thread).
-//
-// It continuously samples the light level, and stores it internally.
-// It provides access to the samples it recorded during the _previous_
-// complete second.
-//
-// The application will do a number of actions each second which must
-// be synchronized (such as computing dips and printing to the screen).
-// To make easy to work with the data, the app must call
-// Sampler_moveCurrentDataToHistory() each second to trigger this
-// module to move the current samples into the history.
+ *  Usage Notes:  
+ * - The application must call `Sampler_moveCurrentDataToHistory()` every second  
+ *   to transfer the latest collected samples into the history buffer.  
+ * - The module supports querying historical light data, including dips, averages,  
+ *   and sample counts.
  */
 
 #ifndef _LIGHTSENSOR_H_

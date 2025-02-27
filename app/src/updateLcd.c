@@ -54,7 +54,8 @@ void UpdateLcd_init()
 void UpdateLcd_cleanup()
 {
     assert(isInitialized);
-
+    LCD_1IN54_Clear(WHITE);
+    LCD_SetBacklight(0);
     // Module Exit
     free(s_fb);
     s_fb = NULL;

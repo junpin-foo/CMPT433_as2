@@ -1,9 +1,10 @@
 /*udp_listener.h
     * 
-    * This file declares a structure for defining UDP listeners and functions for initializing, 
-    * cleaning up.
-    * 
-    * The listener runs in a separate thread and uses the Sampler module to get the required data.
+    * This file declares the UDP listener module, which is responsible for  
+    * receiving UDP messages and handling incoming data.  
+    *  
+    * The listener runs in a separate thread and interacts with the Sampler module  
+    * to process and retrieve the required data.  
     */
 
 #ifndef _UDP_LISTENER_H_

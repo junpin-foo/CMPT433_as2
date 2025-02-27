@@ -53,40 +53,37 @@ struct state {
 /*
     START STATEMACHINE
 */
+static void reset_flag(void) {
+    cwFlag = false;
+    ccwFlag = false;
+}
+
 static void on_clockwise(void) {
     if(cwFlag) {
         counter++;
-        cwFlag = false;
+        reset_flag();
     }
 }
 static void on_counterclockwise(void) {
     if(ccwFlag) {
         counter--;
-        ccwFlag = false;
+        reset_flag();
     }
 }
 
 static void track_clockwise(void) {
     if (cwFlag == false) {
         cwFlag = true;
+        ccwFlag = false;
     }
 }
 
 static void track_counterclockwise(void) {
     if (ccwFlag == false) {
         ccwFlag = true;
-    }
-}
-
-static void reset_flag(void) {
-    if (cwFlag == true) {
         cwFlag = false;
     }
-    if (ccwFlag == true) {
-        ccwFlag = false;
-    }
 }
-
 
 struct state states[] = {
     { // State 0
@@ -208,7 +205,7 @@ static void* RotaryEncoderStateMachine_doState(void* arg)
             pCurrentState = pStateEvent ? pStateEvent->pNextState : pCurrentState;
 
             // DEBUG INFO ABOUT STATEMACHINE
-            #if 0
+            #if 1
             int newState = (pCurrentState - &states[0]);
             double time = event.ts.tv_sec + event.ts.tv_nsec / 1000000000.0;
             printf("State machine Debug: i=%d/%d  line num/dir = %d %8s -> new state %d     [%f]\n", 

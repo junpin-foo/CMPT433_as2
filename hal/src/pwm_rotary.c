@@ -21,7 +21,7 @@
 #define MAX_FREQUENCY 500
 #define BASE_FREQUENCY 10
 
-atomic_int frequency = BASE_FREQUENCY;
+atomic_int frequency = 0;
 static bool isInitialized = false;
 static pthread_mutex_t pwm_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t pwmThread;
@@ -60,6 +60,7 @@ static void *encoder_thread(void *arg) {
         int counter_value = RotaryEncoderStateMachine_getValue();
         if (counter_value != 0) {
             int new_frequency = frequency + counter_value;
+            printf("add counter: %d\n", counter_value);
             pthread_mutex_lock(&pwm_mutex);
             set_pwm_frequency(new_frequency);
             
