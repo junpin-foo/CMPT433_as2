@@ -14,6 +14,7 @@
 
 
 int main() {
+    //Starts each thread and initializes the hardware, such as UDP listener, light sensor, rotary encoder, PWM, and LCD.
     UdpListener_init();
     Sampler_init();
     Lcd_init();

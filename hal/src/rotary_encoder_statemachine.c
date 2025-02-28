@@ -205,7 +205,7 @@ static void* RotaryEncoderStateMachine_doState(void* arg)
             pCurrentState = pStateEvent ? pStateEvent->pNextState : pCurrentState;
 
             // DEBUG INFO ABOUT STATEMACHINE
-            #if 1
+            #if 0
             int newState = (pCurrentState - &states[0]);
             double time = event.ts.tv_sec + event.ts.tv_nsec / 1000000000.0;
             printf("State machine Debug: i=%d/%d  line num/dir = %d %8s -> new state %d     [%f]\n", 

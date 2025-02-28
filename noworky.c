@@ -24,7 +24,7 @@ void swapContent(double *d1, double *d2)
  */
 void tradeArrays(double *array1, double *array2, int size)
 {
-	//Bug was here: It was doing --0 on unsigned int i which wraps around but should be doing --0 on int i instead.
+	//Bug was here: It was doing --0 on unsigned int i which wraps around but should be doing --0 on int i instead to stop the for loop.
 	unsigned int i;
 	for (i = size-1; i >= 0; i--) {
 		swapContent(array1+i, array2+i);
